@@ -9,5 +9,5 @@ func (h *Handler) Register(v1 *echo.Group) {
 	data.POST("/shorten", h.Shorten)
 
 	general := v1.Group("")
-	general.GET("/:url", h.GetLongUrl)
+	general.GET("/:hash", h.GetLongUrl)
 }

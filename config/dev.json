@@ -1,0 +1,15 @@
+{
+    "postgresDB" : {
+        "host" : "localhost",
+        "user" : "postgres",
+        "password" : "Qwerty123!",
+        "dbName" : "ShortURLDataDB",
+        "port" : "5432",
+        "sslmode" : "disable"
+    },
+    "server" : {
+        "restPort" : "8585",
+        "dataCenterId" : "1",
+        "mashineId" : "1"
+    }
+}

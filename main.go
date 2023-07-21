@@ -1,30 +1,92 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"os"
+	"runtime/pprof"
+
+	"github.com/labstack/echo/v4"
+	_ "github.com/lib/pq"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/cache"
+	"github.com/mykyta-kravchenko98/ShortUrl/internal/config"
+	repositories "github.com/mykyta-kravchenko98/ShortUrl/internal/db/postgres"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/handler"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/router"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/service"
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/generator"
 )
 
+var (
+	logger echo.Logger
+)
+
 func main() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		fmt.Println("Could not create CPU profile:", err)
+		return
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	r := router.New()
 
-	v1 := r.Group("/api/v1")
-
-	c := cache.InitLRUCache(100)
-	idGen, err := generator.NewSnowflake(1, 1)
-	if err != nil {
-		r.Logger.Fatal(err)
+	if logger == nil {
+		logger = r.Logger
 	}
 
-	urlService := service.NewUrlService(idGen, &c)
+	env := os.Getenv("environment")
+	if env == "" {
+		env = "dev"
+	}
 
-	//d := db.New()
-	//db.AutoMigrate(d)
+	//Load configuration
+	conf, confErr := config.LoadConfig(env)
+	if confErr != nil {
+		r.Logger.Fatal("Config load failed")
+	}
+
+	// connection string
+	psqlConf := conf.PostgresDB
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName)
+
+	//open postgres connection
+	db, err := sql.Open("postgres", psqlconn)
+	CheckError(err)
+
+	// close database
+	defer db.Close()
+
+	// check db
+	err = db.Ping()
+	CheckError(err)
+
+	//Init Repository
+	urlRepo := repositories.NewCurrencySnapshotDataService(db)
+
+	//Init server group
+	v1 := r.Group("/api/v1")
+
+	//Init cache
+	c := cache.InitLRUCache(100)
+
+	//Init Id Generator
+	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterId), int64(conf.Server.MashineId))
+
+	CheckError(err)
+
+	urlService := service.NewUrlService(idGen, c, urlRepo)
 
 	h := handler.NewHandler(urlService)
 	h.Register(v1)
-	r.Logger.Fatal(r.Start("127.0.0.1:8585"))
+
+	r.Logger.Fatal(r.Start(fmt.Sprintf("127.0.0.1:%s", conf.Server.RESTPort)))
+}
+
+func CheckError(err error) {
+	if err != nil {
+		logger.Fatal(err)
+	}
 }

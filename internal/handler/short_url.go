@@ -1,9 +1,15 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"net/url"
 
 	"github.com/labstack/echo/v4"
+)
+
+var (
+	NotValidURL = errors.New("Url is not valid.")
 )
 
 // GetLongUrl godoc
@@ -17,17 +23,17 @@ import (
 // @Success 200 {object} singleArticleResponse
 // @Failure 400 {object} utils.Error
 // @Failure 500 {object} utils.Error
-// @Router /{url} [get]
+// @Router /{hash} [get]
 func (h *Handler) GetLongUrl(c echo.Context) error {
-	url := c.Param("url")
+	hash := c.Param("hash")
 
-	longUrl, err := h.urlService.GetLongUrl(url)
+	longUrl, err := h.urlService.GetLongUrl(hash)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)
 	}
 
-	return c.JSON(http.StatusOK, longUrl)
+	return c.Redirect(http.StatusPermanentRedirect, longUrl)
 }
 
 // Shorten godoc
@@ -50,7 +56,7 @@ func (h *Handler) Shorten(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	if err := c.Validate(req); err != nil {
+	if !isValidURL(req.LongUrl) {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
@@ -69,4 +75,20 @@ type shortenRequest struct {
 
 type shortenResponse struct {
 	ShortUrl string `json:"shortUrl" validate:"required"`
+}
+
+func isValidURL(inputURL string) bool {
+	// Parse the URL
+	u, err := url.Parse(inputURL)
+	if err != nil {
+		return false
+	}
+
+	// Check if the Scheme and Host are not empty
+	if u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	// URL is valid
+	return true
 }
