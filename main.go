@@ -41,16 +41,24 @@ func main() {
 		env = "dev"
 	}
 
+	var conf *config.Config
+	var confErr error
 	//Load configuration
-	conf, confErr := config.LoadConfig(env)
+	if env == "dev" {
+		conf, confErr = config.LoadConfigJson(env)
+	}
+	if env == "prod" {
+		conf, confErr = config.LoadConfigYaml()
+	}
+
 	if confErr != nil {
 		r.Logger.Fatal("Config load failed")
 	}
 
 	// connection string
 	psqlConf := conf.PostgresDB
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName)
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName, psqlConf.SSLMode)
 
 	//open postgres connection
 	db, err := sql.Open("postgres", psqlconn)

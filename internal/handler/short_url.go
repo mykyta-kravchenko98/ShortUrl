@@ -22,13 +22,13 @@ import (
 func (h *Handler) GetLongURL(c echo.Context) error {
 	hash := c.Param("hash")
 
-	longUrl, err := h.urlService.GetLongURL(hash)
+	longURL, err := h.urlService.GetLongURL(hash)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)
 	}
 
-	return c.Redirect(http.StatusPermanentRedirect, longUrl)
+	return c.Redirect(http.StatusPermanentRedirect, longURL)
 }
 
 // Shorten godoc
@@ -55,13 +55,13 @@ func (h *Handler) Shorten(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	shortUrl, err := h.urlService.GenerateShortURL(req.LongURL)
+	shortURL, err := h.urlService.GenerateShortURL(req.LongURL)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)
 	}
 
-	return c.JSON(http.StatusOK, shortenResponse{shortUrl})
+	return c.JSON(http.StatusOK, shortenResponse{shortURL})
 }
 
 type shortenRequest struct {

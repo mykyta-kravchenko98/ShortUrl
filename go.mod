@@ -41,4 +41,5 @@ require (
 	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0
+	gopkg.in/yaml.v2 v2.4.0
 )

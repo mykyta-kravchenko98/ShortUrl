@@ -1,0 +1,11 @@
+postgresDB:
+  host: localhost
+  user: user
+  password: password
+  port: 5432
+  ssl: disable
+
+server:
+  restPort: 8585
+  dataCenterId: 1
+  mashineId: 1

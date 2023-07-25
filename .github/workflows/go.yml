@@ -43,6 +43,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set Configurations as Environment Variables
+        run: |
+          echo "postgresDB:" >> config/config.yml
+          echo "  host: ${{ secrets.POSTGRES_HOST }}" >> config/config.yml
+          echo "  user: ${{ secrets.POSTGRES_USER }}" >> config/config.yml
+          echo "  password: ${{ secrets.POSTGRES_PASSWORD }}" >> config/config.yml
+          echo "  port: 5432" >> config/config.yml
+          echo "  ssl: ${{ secrets.POSTGRES_SSLMODE }}" >> config/config.yml
+          echo "server:" >> config/config.yml
+          echo "  restPort: ${{ secrets.SERVER_RESTPORT }}" >> config/config.yml
+          echo "  dataCenterId: ${{ secrets.SERVER_DATA_CENTER_ID }}" >> config/config.yml
+          echo "  machineId: ${{ secrets.SERVER_MACHINE_ID }}" >> config/config.yml
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
