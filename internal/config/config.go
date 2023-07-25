@@ -1,7 +1,8 @@
 package config
 
 import (
-	"io/ioutil"
+	"io"
+	"os"
 
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -59,15 +60,21 @@ func LoadConfigJson(env string) (*Config, error) {
 }
 
 func LoadConfigYaml() (*Config, error) {
-	data, err := ioutil.ReadFile("config/config.yml")
+	file, err := os.Open("config/config.yml")
 	if err != nil {
-		return &Config{}, err
+		return nil, err
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse the YAML data into the Config struct
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		return &Config{}, err
+		return nil, err
 	}
 
 	return config, err
