@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-// Creating new router for Echo server
+// New method creating a new router for Echo server
 func New() *echo.Echo {
 	e := echo.New()
 	e.Logger.SetLevel(log.DEBUG)

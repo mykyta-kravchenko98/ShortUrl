@@ -11,14 +11,14 @@ const (
 	insertDyn = `insert into "shorten_url"("id", "short_url", "long_url") values($1, $2, $3)`
 )
 
-// Interface for access to short url db data
+// URLDataService is a interface for access to short url db data
 type URLDataService interface {
 	Create(shortenURLModel model.ShortenURLModel) error
 	Get(hash string) (model.ShortenURLModel, error)
 	GetByLongURL(longURL string) (model.ShortenURLModel, error)
 }
 
-// return StockDataService instance
+// NewCurrencySnapshotDataService its method for creating instance of urlRepository and return URLDataService interface
 func NewCurrencySnapshotDataService(db *sql.DB) URLDataService {
 	iDBSvc := &urlRepository{
 		database: db,
@@ -51,18 +51,18 @@ func (urlRepository *urlRepository) Get(hash string) (model.ShortenURLModel, err
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var shortenUrl string
-		var longUrl string
+		var shortenURL string
+		var longURL string
 
-		err = rows.Scan(&id, &shortenUrl, &longUrl)
+		err = rows.Scan(&id, &shortenURL, &longURL)
 
 		if err != nil {
 			return model, err
 		}
 
 		model.ID = id
-		model.ShortURL = shortenUrl
-		model.LongURL = longUrl
+		model.ShortURL = shortenURL
+		model.LongURL = longURL
 	}
 
 	return model, nil
@@ -81,18 +81,18 @@ func (urlRepository *urlRepository) GetByLongURL(longURL string) (model.ShortenU
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var shortenUrl string
-		var longUrl string
+		var shortenURL string
+		var longURL string
 
-		err = rows.Scan(&id, &shortenUrl, &longUrl)
+		err = rows.Scan(&id, &shortenURL, &longURL)
 
 		if err != nil {
 			return model, err
 		}
 
 		model.ID = id
-		model.ShortURL = shortenUrl
-		model.LongURL = longUrl
+		model.ShortURL = shortenURL
+		model.LongURL = longURL
 	}
 
 	return model, nil

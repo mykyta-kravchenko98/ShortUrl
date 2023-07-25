@@ -1,6 +1,6 @@
 package model
 
-// Main domain model that present db table structure
+// ShortenURLModel is a main domain model that representing db table structure
 type ShortenURLModel struct {
 	ID       int64
 	ShortURL string

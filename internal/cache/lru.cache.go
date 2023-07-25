@@ -17,13 +17,14 @@ type cacheNode struct {
 	Prev  *cacheNode
 }
 
-//Interface for comunication with lru cache
+//LRUCache its interface for comunication with lru cache
 type LRUCache interface {
 	Get(key string) string
 	Put(key string, value string)
 	Length() int
 }
 
+// InitLRUCache its method for creating instance of lruCache and return LRUCache interface
 func InitLRUCache(capacity int) LRUCache {
 	cache := &lruCache{
 		Capacity: capacity,

@@ -19,7 +19,7 @@ import (
 // @Failure 400 {object} utils.Error
 // @Failure 500 {object} utils.Error
 // @Router /{hash} [get]
-func (h *Handler) GetLongUrl(c echo.Context) error {
+func (h *Handler) GetLongURL(c echo.Context) error {
 	hash := c.Param("hash")
 
 	longUrl, err := h.urlService.GetLongURL(hash)
@@ -32,13 +32,13 @@ func (h *Handler) GetLongUrl(c echo.Context) error {
 }
 
 // Shorten godoc
-// @Summary Create shortUrl
-// @Description Create shortUrl and return it
+// @Summary Create shortURL
+// @Description Create shortURL and return it
 // @ID shorten
 // @Tags article
 // @Accept  json
 // @Produce  json
-// @Param shortenRequest body, longUrl is required
+// @Param shortenRequest body, longURL is required
 // @Success 201 {object} singleArticleResponse
 // @Failure 401 {object} utils.Error
 // @Failure 422 {object} utils.Error
@@ -51,11 +51,11 @@ func (h *Handler) Shorten(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	if !isValidURL(req.LongUrl) {
+	if !isValidURL(req.LongURL) {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	shortUrl, err := h.urlService.GenerateShortURL(req.LongUrl)
+	shortUrl, err := h.urlService.GenerateShortURL(req.LongURL)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)
@@ -65,11 +65,11 @@ func (h *Handler) Shorten(c echo.Context) error {
 }
 
 type shortenRequest struct {
-	LongUrl string `json:"longUrl" validate:"required"`
+	LongURL string `json:"longURL" validate:"required"`
 }
 
 type shortenResponse struct {
-	ShortUrl string `json:"shortUrl" validate:"required"`
+	ShortURL string `json:"shortURL" validate:"required"`
 }
 
 func isValidURL(inputURL string) bool {

@@ -24,7 +24,7 @@ const (
 	machineIDShift    = sequenceBits
 )
 
-// Snowflake struct to hold the state of the Snowflake generator
+// snowflake struct to hold the state of the Snowflake generator
 type snowflake struct {
 	datacenterID  int64
 	machineID     int64
@@ -33,12 +33,12 @@ type snowflake struct {
 	lock          sync.Mutex
 }
 
-// Interface for interaction with snowflake generator implementation
+// Snowflake - interface for interaction with snowflake generator implementation
 type Snowflake interface {
 	NextID() (int64, error)
 }
 
-// NewSnowflake creates a new Snowflake instance with the given datacenter ID and machine ID
+// NewSnowflake creates a new snowflake instance with the given datacenter ID and machine ID and return Snowflake interface
 func NewSnowflake(datacenterID, machineID int64) (Snowflake, error) {
 	if datacenterID < 0 || datacenterID > maxDatacenterID || machineID < 0 || machineID > maxMachineID {
 		return nil, errors.New("datacenter ID or machine ID out of range")
