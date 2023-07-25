@@ -64,6 +64,10 @@ func (h *Handler) Shorten(c echo.Context) error {
 	return c.JSON(http.StatusOK, shortenResponse{shortURL})
 }
 
+func (h *Handler) GetStatus(c echo.Context) error {
+	return c.String(http.StatusOK, "Application is running!")
+}
+
 type shortenRequest struct {
 	LongURL string `json:"longURL" validate:"required"`
 }

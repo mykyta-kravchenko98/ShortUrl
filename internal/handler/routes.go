@@ -11,4 +11,5 @@ func (h *Handler) Register(v1 *echo.Group) {
 
 	general := v1.Group("")
 	general.GET("/:hash", h.GetLongURL)
+	general.GET("/status", h.GetStatus)
 }
