@@ -1,15 +1,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"net/url"
 
 	"github.com/labstack/echo/v4"
-)
-
-var (
-	NotValidURL = errors.New("Url is not valid.")
 )
 
 // GetLongUrl godoc

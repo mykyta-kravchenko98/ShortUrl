@@ -32,58 +32,58 @@ func InitLRUCache(capacity int) LRUCache {
 	return cache
 }
 
-func (this *lruCache) Length() int {
-	return len(this.Cache)
+func (с *lruCache) Length() int {
+	return len(с.Cache)
 }
 
-func (this *lruCache) Get(key string) string {
-	this.m.Lock()
-	defer this.m.Unlock()
-	if value, ok := this.Cache[key]; ok {
-		this.MoveFront(value)
+func (с *lruCache) Get(key string) string {
+	с.m.Lock()
+	defer с.m.Unlock()
+	if value, ok := с.Cache[key]; ok {
+		с.MoveFront(value)
 		return value.Value
 	}
 
 	return ""
 }
 
-func (this *lruCache) Put(key string, value string) {
-	this.m.Lock()
-	defer this.m.Unlock()
-	if result, found := this.Cache[key]; found {
+func (с *lruCache) Put(key string, value string) {
+	с.m.Lock()
+	defer с.m.Unlock()
+	if result, found := с.Cache[key]; found {
 		result.Value = value
-		this.MoveFront(result)
+		с.MoveFront(result)
 	} else {
 		newNode := &cacheNode{Key: key, Value: value}
-		if len(this.Cache) >= this.Capacity {
-			delete(this.Cache, this.Teil.Key)
-			this.RemoveTail()
+		if len(с.Cache) >= с.Capacity {
+			delete(с.Cache, с.Teil.Key)
+			с.RemoveTail()
 		}
-		this.Cache[key] = newNode
-		this.AddNode(newNode)
+		с.Cache[key] = newNode
+		с.AddNode(newNode)
 	}
 }
 
-func (this *lruCache) MoveFront(node *cacheNode) {
-	if node == this.Head {
+func (с *lruCache) MoveFront(node *cacheNode) {
+	if node == с.Head {
 		return
 	}
 
-	this.RemoveNode(node)
-	this.AddNode(node)
+	с.RemoveNode(node)
+	с.AddNode(node)
 }
 
-func (this *lruCache) RemoveTail() {
-	this.RemoveNode(this.Teil)
+func (с *lruCache) RemoveTail() {
+	с.RemoveNode(с.Teil)
 }
 
-func (this *lruCache) RemoveNode(node *cacheNode) {
-	if node == this.Head {
-		this.Head = node.Next
+func (с *lruCache) RemoveNode(node *cacheNode) {
+	if node == с.Head {
+		с.Head = node.Next
 	}
 
-	if node == this.Teil {
-		this.Teil = node.Prev
+	if node == с.Teil {
+		с.Teil = node.Prev
 	}
 
 	if node.Prev != nil {
@@ -98,13 +98,13 @@ func (this *lruCache) RemoveNode(node *cacheNode) {
 	node.Next = nil
 }
 
-func (this *lruCache) AddNode(node *cacheNode) {
-	if this.Head == nil {
-		this.Head = node
-		this.Teil = node
+func (с *lruCache) AddNode(node *cacheNode) {
+	if с.Head == nil {
+		с.Head = node
+		с.Teil = node
 	} else {
-		this.Head.Prev = node
-		node.Next = this.Head
-		this.Head = node
+		с.Head.Prev = node
+		node.Next = с.Head
+		с.Head = node
 	}
 }
