@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Normal_Behavior(t *testing.T) {
-	to := build_NewSnowflake()
+	to := buildNewSnowflake()
 
 	result, err := to.NextID()
 	assert.NoError(t, err)
@@ -18,7 +18,7 @@ func Test_Normal_Behavior(t *testing.T) {
 // Adjust the current timestamp to be a smaller value than the previous one
 // The next call to NextID should return an error
 func Test_Backward_Clock_Movement(t *testing.T) {
-	to := build_NewSnowflake()
+	to := buildNewSnowflake()
 
 	to.lastTimestamp = time.Now().Add(1*time.Minute).UnixNano() / int64(time.Millisecond)
 	result, err := to.NextID()
@@ -30,7 +30,7 @@ func Test_Backward_Clock_Movement(t *testing.T) {
 // Set the sequence number to the maximum value (maxSequence) and the timestamp to the current time
 // Subsequent calls to NextID should wait for the next millisecond to avoid sequence number overflow
 func Test_Sequence_Number_Overflow(t *testing.T) {
-	to := build_NewSnowflake()
+	to := buildNewSnowflake()
 
 	to.sequence = maxSequence
 	time.Sleep(1 * time.Millisecond) // Wait for the next millisecond
@@ -75,7 +75,7 @@ func Benchmark_Snowflake_Generation(b *testing.B) {
 	}
 }
 
-func build_NewSnowflake() *snowflake {
+func buildNewSnowflake() *snowflake {
 	return &snowflake{
 		lastTimestamp: 0,
 		sequence:      0,

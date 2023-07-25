@@ -17,6 +17,7 @@ type cacheNode struct {
 	Prev  *cacheNode
 }
 
+//Interface for comunication with lru cache
 type LRUCache interface {
 	Get(key string) string
 	Put(key string, value string)

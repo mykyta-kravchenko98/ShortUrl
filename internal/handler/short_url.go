@@ -22,7 +22,7 @@ import (
 func (h *Handler) GetLongUrl(c echo.Context) error {
 	hash := c.Param("hash")
 
-	longUrl, err := h.urlService.GetLongUrl(hash)
+	longUrl, err := h.urlService.GetLongURL(hash)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)
@@ -55,7 +55,7 @@ func (h *Handler) Shorten(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	shortUrl, err := h.urlService.GenerateShortUrl(req.LongUrl)
+	shortUrl, err := h.urlService.GenerateShortURL(req.LongUrl)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, nil)

@@ -1,7 +1,8 @@
 package model
 
+// Main domain model that present db table structure
 type ShortenURLModel struct {
-	Id       int64
+	ID       int64
 	ShortURL string
 	LongURL  string
 }

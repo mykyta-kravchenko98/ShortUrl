@@ -33,7 +33,7 @@ type urlRepository struct {
 
 // Insert record in db
 func (urlRepository *urlRepository) Create(shortenURLModel model.ShortenURLModel) error {
-	_, err := urlRepository.database.Exec(insertDyn, shortenURLModel.Id, shortenURLModel.ShortURL, shortenURLModel.LongURL)
+	_, err := urlRepository.database.Exec(insertDyn, shortenURLModel.ID, shortenURLModel.ShortURL, shortenURLModel.LongURL)
 
 	return err
 }
@@ -51,18 +51,18 @@ func (urlRepository *urlRepository) Get(hash string) (model.ShortenURLModel, err
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var shorten_url string
-		var long_url string
+		var shortenUrl string
+		var longUrl string
 
-		err = rows.Scan(&id, &shorten_url, &long_url)
+		err = rows.Scan(&id, &shortenUrl, &longUrl)
 
 		if err != nil {
 			return model, err
 		}
 
-		model.Id = id
-		model.ShortURL = shorten_url
-		model.LongURL = long_url
+		model.ID = id
+		model.ShortURL = shortenUrl
+		model.LongURL = longUrl
 	}
 
 	return model, nil
@@ -81,18 +81,18 @@ func (urlRepository *urlRepository) GetByLongURL(longURL string) (model.ShortenU
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var shorten_url string
-		var long_url string
+		var shortenUrl string
+		var longUrl string
 
-		err = rows.Scan(&id, &shorten_url, &long_url)
+		err = rows.Scan(&id, &shortenUrl, &longUrl)
 
 		if err != nil {
 			return model, err
 		}
 
-		model.Id = id
-		model.ShortURL = shorten_url
-		model.LongURL = long_url
+		model.ID = id
+		model.ShortURL = shortenUrl
+		model.LongURL = longUrl
 	}
 
 	return model, nil

@@ -33,6 +33,7 @@ type snowflake struct {
 	lock          sync.Mutex
 }
 
+// Interface for interaction with snowflake generator implementation
 type Snowflake interface {
 	NextID() (int64, error)
 }

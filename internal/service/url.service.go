@@ -14,12 +14,14 @@ type urlService struct {
 	urlRepository repositories.URLDataService
 }
 
-type UrlService interface {
-	GenerateShortUrl(longUrl string) (shortUrl string, err error)
-	GetLongUrl(shortUrl string) (string, error)
+// Interface for working with url data
+type URLService interface {
+	GenerateShortURL(longUrl string) (shortUrl string, err error)
+	GetLongURL(shortUrl string) (string, error)
 }
 
-func NewUrlService(idGenerator generator.Snowflake, cache cache.LRUCache, rep repositories.URLDataService) UrlService {
+// Create new UrlService instance
+func NewURLService(idGenerator generator.Snowflake, cache cache.LRUCache, rep repositories.URLDataService) URLService {
 	return &urlService{
 		idGenerator:   idGenerator,
 		cache:         cache,
@@ -27,15 +29,18 @@ func NewUrlService(idGenerator generator.Snowflake, cache cache.LRUCache, rep re
 	}
 }
 
-func (us *urlService) GenerateShortUrl(longUrl string) (shortUrl string, err error) {
-	existRecord, err := us.urlRepository.GetByLongURL(longUrl)
+// Method checking if Url is already saved in DB. If yes, that returns the hash
+// if no, then generate Id and use it for getting hash.
+// Save data in db and add into cache. After that return saved hash.
+func (us *urlService) GenerateShortURL(longURL string) (shortURL string, err error) {
+	existRecord, err := us.urlRepository.GetByLongURL(longURL)
 
 	if err != nil {
-		return shortUrl, err
+		return shortURL, err
 	}
 
-	if existRecord.Id > 0 {
-		us.cache.Put(shortUrl, longUrl)
+	if existRecord.ID > 0 {
+		us.cache.Put(shortURL, longURL)
 
 		return existRecord.ShortURL, err
 	}
@@ -43,15 +48,15 @@ func (us *urlService) GenerateShortUrl(longUrl string) (shortUrl string, err err
 	id, err := us.idGenerator.NextID()
 
 	if err != nil {
-		return shortUrl, err
+		return shortURL, err
 	}
 
-	shortUrl = hashfunction.DecimalToBase62(id)
+	shortURL = hashfunction.DecimalToBase62(id)
 
 	newItem := model.ShortenURLModel{
-		Id:       id,
-		ShortURL: shortUrl,
-		LongURL:  longUrl,
+		ID:       id,
+		ShortURL: shortURL,
+		LongURL:  longURL,
 	}
 
 	err = us.urlRepository.Create(newItem)
@@ -60,19 +65,21 @@ func (us *urlService) GenerateShortUrl(longUrl string) (shortUrl string, err err
 		return "", err
 	}
 
-	us.cache.Put(shortUrl, longUrl)
+	us.cache.Put(shortURL, longURL)
 
-	return shortUrl, err
+	return shortURL, err
 }
 
-func (us *urlService) GetLongUrl(shortUrl string) (string, error) {
-	longUrl := us.cache.Get(shortUrl)
+// Scaning chache for containing shortURL key and return longURL value
+// if scaning failed it looks into db and return longURL value or exception
+func (us *urlService) GetLongURL(shortURL string) (string, error) {
+	longUrl := us.cache.Get(shortURL)
 
 	if longUrl != "" {
 		return longUrl, nil
 	}
 
-	result, err := us.urlRepository.Get(shortUrl)
+	result, err := us.urlRepository.Get(shortURL)
 
 	if err != nil {
 		return longUrl, err

@@ -54,14 +54,14 @@ func main() {
 
 	//open postgres connection
 	db, err := sql.Open("postgres", psqlconn)
-	CheckError(err)
+	checkError(err)
 
 	// close database
 	defer db.Close()
 
 	// check db
 	err = db.Ping()
-	CheckError(err)
+	checkError(err)
 
 	//Init Repository
 	urlRepo := repositories.NewCurrencySnapshotDataService(db)
@@ -73,11 +73,11 @@ func main() {
 	c := cache.InitLRUCache(100)
 
 	//Init Id Generator
-	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterId), int64(conf.Server.MashineId))
+	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterID), int64(conf.Server.MashineID))
 
-	CheckError(err)
+	checkError(err)
 
-	urlService := service.NewUrlService(idGen, c, urlRepo)
+	urlService := service.NewURLService(idGen, c, urlRepo)
 
 	h := handler.NewHandler(urlService)
 	h.Register(v1)
@@ -85,7 +85,7 @@ func main() {
 	r.Logger.Fatal(r.Start(fmt.Sprintf("127.0.0.1:%s", conf.Server.RESTPort)))
 }
 
-func CheckError(err error) {
+func checkError(err error) {
 	if err != nil {
 		logger.Fatal(err)
 	}
