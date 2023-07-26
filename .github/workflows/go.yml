@@ -108,6 +108,7 @@ jobs:
         run: |
           cd deployment
           zip -r ../app.zip scripts
+          zip -r ../app.zip appspec.yml
 
       - name: Upload source bundle to S3 and deploy
         run: |
