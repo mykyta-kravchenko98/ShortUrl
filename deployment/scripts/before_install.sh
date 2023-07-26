@@ -3,5 +3,5 @@
 # Change to the app directory
 cd smurl
 
-chmod +x ~/smurl/before_install_script.sh
-chmod +x ~/smurl/after_install_script.sh
+chmod +x ~/smurl/before_install.sh
+chmod +x ~/smurl/aapplication_start.sh

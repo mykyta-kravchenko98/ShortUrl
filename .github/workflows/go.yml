@@ -105,7 +105,9 @@ jobs:
         run: zip -r app.zip app
 
       - name: Add deployment content to the archive
-        run: zip -rj app.zip deployment
+        run: |
+          zip -rg app.zip deployment/scripts
+          zip -rg app.zip appspec.yml
 
       - name: Upload source bundle to S3 and deploy
         run: |

@@ -2,19 +2,18 @@ version: 0.0
 os: linux
 files:
   - source: app.zip
-    destination: ~/smurl
+    destination: home/smurl
 
 permissions:
   - object: /
       pattern: "**"
       owner: ubuntu
       group: ubuntu
-      
+
 hooks:
   BeforeInstall:
-    - location: before_install.sh
+    - location: scripts/before_install.sh
       runas: ubuntu
-      timeout: 300
-  AfterInstall:
-    - location: after_install.sh
+  ApplicationStart:
+    - location: scripts/application_start.sh
       runas: ubuntu
