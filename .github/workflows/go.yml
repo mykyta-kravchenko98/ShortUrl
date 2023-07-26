@@ -104,8 +104,8 @@ jobs:
       - name: create the bundle source
         run: zip -r app.zip app
 
-      - name: Add deployments to the archive
-        run: zip -rg app.zip deployment
+      - name: Add deployment content to the archive
+        run: zip -rg app.zip deployment/*
 
       - name: Upload source bundle to S3 and deploy
         run: |
