@@ -1,0 +1,12 @@
+version: 0.0
+os: linux
+files:
+  - source: app.zip
+    destination: ~/smurl
+hooks:
+  BeforeInstall:
+    - location: scripts/before_install.sh
+      runas: ubuntu
+  AfterInstall:
+    - location: scripts/after_install.sh
+      runas: ubuntu
