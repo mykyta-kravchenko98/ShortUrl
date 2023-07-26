@@ -104,15 +104,10 @@ jobs:
       - name: create the bundle source
         run: zip -r app.zip app
 
-      - name: Upload source bundle to S3
-        run: aws s3 cp app.zip s3://smurl-bucket/app.zip
+      - name: Upload source bundle to S3 and deploy
+        run: aws deploy push --application-name Smurl_App --s3-location s3://smurl-bucket/app.zip --ignore-hidden-files
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: eu-central-1
-
-      - name: Trigger SSM Run Command
-        run: |
-          INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=smurl" --query "Reservations[].Instances[].InstanceId" --output text)
-          aws ssm create-association --name "SmurlAppRun" --targets "Key=InstanceIds,Values=$INSTANCE_ID"
 

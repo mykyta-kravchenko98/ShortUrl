@@ -36,8 +36,8 @@ var (
 	config *Config
 )
 
-// LoadConfig is a init method that find config file and initialize Config struct. Must be called in main.go
-func LoadConfigJson(env string) (*Config, error) {
+// LoadConfigJSON is a init method that find config json file and initialize Config struct. Must be called in main.go. Using in local env
+func LoadConfigJSON(env string) (*Config, error) {
 	vp = viper.New()
 
 	vp.SetConfigType("json")
@@ -59,7 +59,8 @@ func LoadConfigJson(env string) (*Config, error) {
 	return config, err
 }
 
-func LoadConfigYaml() (*Config, error) {
+// LoadConfigYAML is a init method that find config yaml file and initialize Config struct. Using when deploying on prod
+func LoadConfigYAML() (*Config, error) {
 	file, err := os.Open("config/config.yml")
 	if err != nil {
 		return nil, err

@@ -45,10 +45,10 @@ func main() {
 	var confErr error
 	//Load configuration
 	if env == "dev" {
-		conf, confErr = config.LoadConfigJson(env)
+		conf, confErr = config.LoadConfigJSON(env)
 	}
 	if env == "prod" {
-		conf, confErr = config.LoadConfigYaml()
+		conf, confErr = config.LoadConfigYAML()
 	}
 
 	if confErr != nil {
