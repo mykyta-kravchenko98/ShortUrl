@@ -108,7 +108,7 @@ jobs:
         run: zip -rg app.zip deployments
 
       - name: Upload source bundle to S3 and deploy
-        run: aws deploy create-deployment --application-name Smurl_App --deployment-group-name prod-deploy --s3-location bucket=smurl-bucket,key=app.zip,bundleType=zip
+        run: aws deploy create-deployment --application-name Smurl_App --deployment-group-name prod-deploy --s3-location s3://smurl-bucket/app.zip
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
