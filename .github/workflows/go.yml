@@ -105,7 +105,7 @@ jobs:
         run: zip -r app.zip app
 
       - name: Add deployments to the archive
-        run: zip -rg app.zip deployments
+        run: zip -rg app.zip deployment
 
       - name: Upload source bundle to S3 and deploy
         run: aws deploy create-deployment --application-name Smurl_App --deployment-group-name prod-deploy --s3-location s3://smurl-bucket/app.zip
