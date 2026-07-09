@@ -21,7 +21,7 @@ func New() *echo.Echo {
 	e.Use(otelecho.Middleware(observability.ServiceName))
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
 		AllowMethods: []string{echo.GET, echo.POST},
 	}))
 	e.Validator = NewValidator()
