@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -20,12 +21,17 @@ import (
 // @Failure 500 {object} utils.Error
 // @Router /{hash} [get]
 func (h *Handler) GetLongURL(c echo.Context) error {
+	ctx := c.Request().Context()
 	hash := c.Param("hash")
 
-	longURL, err := h.urlService.GetLongURL(hash)
-
+	longURL, err := h.urlService.GetLongURL(ctx, hash)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to resolve short url", "hash", hash, "error", err)
 		return c.JSON(http.StatusInternalServerError, nil)
+	}
+
+	if longURL == "" {
+		return c.JSON(http.StatusNotFound, nil)
 	}
 
 	return c.Redirect(http.StatusPermanentRedirect, longURL)
@@ -45,6 +51,7 @@ func (h *Handler) GetLongURL(c echo.Context) error {
 // @Failure 500 {object} utils.Error
 // @Router /shorten [post]
 func (h *Handler) Shorten(c echo.Context) error {
+	ctx := c.Request().Context()
 	req := &shortenRequest{}
 
 	if err := c.Bind(req); err != nil {
@@ -55,9 +62,9 @@ func (h *Handler) Shorten(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
-	shortURL, err := h.urlService.GenerateShortURL(req.LongURL)
-
+	shortURL, err := h.urlService.GenerateShortURL(ctx, req.LongURL)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate short url", "longURL", req.LongURL, "error", err)
 		return c.JSON(http.StatusInternalServerError, nil)
 	}
 

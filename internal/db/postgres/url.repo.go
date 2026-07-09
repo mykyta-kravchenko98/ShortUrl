@@ -1,21 +1,25 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/model"
 )
 
 const (
-	insertDyn = `insert into "shorten_url"("id", "short_url", "long_url") values($1, $2, $3)`
+	insertQuery       = `INSERT INTO "shorten_url"("id", "short_url", "long_url") VALUES ($1, $2, $3)`
+	getByHashQuery    = `SELECT id, short_url, long_url FROM "shorten_url" WHERE short_url = $1`
+	getByLongURLQuery = `SELECT id, short_url, long_url FROM "shorten_url" WHERE long_url = $1`
 )
 
 // URLDataService is a interface for access to short url db data
 type URLDataService interface {
-	Create(shortenURLModel model.ShortenURLModel) error
-	Get(hash string) (model.ShortenURLModel, error)
-	GetByLongURL(longURL string) (model.ShortenURLModel, error)
+	Create(ctx context.Context, shortenURLModel model.ShortenURLModel) error
+	Get(ctx context.Context, hash string) (model.ShortenURLModel, error)
+	GetByLongURL(ctx context.Context, longURL string) (model.ShortenURLModel, error)
+	Ping(ctx context.Context) error
 }
 
 // NewCurrencySnapshotDataService its method for creating instance of urlRepository and return URLDataService interface
@@ -26,74 +30,46 @@ func NewCurrencySnapshotDataService(db *sql.DB) URLDataService {
 	return iDBSvc
 }
 
-// currencyRepository implements StockDataService
+// urlRepository implements URLDataService
 type urlRepository struct {
 	database *sql.DB
 }
 
-// Insert record in db
-func (urlRepository *urlRepository) Create(shortenURLModel model.ShortenURLModel) error {
-	_, err := urlRepository.database.Exec(insertDyn, shortenURLModel.ID, shortenURLModel.ShortURL, shortenURLModel.LongURL)
-
+// Create inserts a new short url record. Uses a parameterized query
+// (previously this used fmt.Sprintf string interpolation, which was a SQL
+// injection vector).
+func (r *urlRepository) Create(ctx context.Context, shortenURLModel model.ShortenURLModel) error {
+	_, err := r.database.ExecContext(ctx, insertQuery, shortenURLModel.ID, shortenURLModel.ShortURL, shortenURLModel.LongURL)
 	return err
 }
 
-// Get record by short_url hash
-func (urlRepository *urlRepository) Get(hash string) (model.ShortenURLModel, error) {
-	query := fmt.Sprintf(`SELECT id, shorten_url, long_url FROM "shorten_url" WHERE short_url = '%s'`, hash)
-	model := model.ShortenURLModel{}
-	rows, err := urlRepository.database.Query(query)
-
-	if err != nil {
-		return model, err
-	}
-
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		var shortenURL string
-		var longURL string
-
-		err = rows.Scan(&id, &shortenURL, &longURL)
-
-		if err != nil {
-			return model, err
-		}
-
-		model.ID = id
-		model.ShortURL = shortenURL
-		model.LongURL = longURL
-	}
-
-	return model, nil
+// Get looks up a record by its short_url hash. Returns a zero-value model
+// (ID == 0) and a nil error when nothing is found, matching prior behavior.
+func (r *urlRepository) Get(ctx context.Context, hash string) (model.ShortenURLModel, error) {
+	return r.queryRow(ctx, getByHashQuery, hash)
 }
 
-// Get record by short_url hash
-func (urlRepository *urlRepository) GetByLongURL(longURL string) (model.ShortenURLModel, error) {
-	query := fmt.Sprintf(`SELECT id, shorten_url, long_url FROM "shorten_url" WHERE long_url = '%s'`, longURL)
-	model := model.ShortenURLModel{}
-	rows, err := urlRepository.database.Query(query)
+// GetByLongURL looks up a record by its original long url.
+func (r *urlRepository) GetByLongURL(ctx context.Context, longURL string) (model.ShortenURLModel, error) {
+	return r.queryRow(ctx, getByLongURLQuery, longURL)
+}
 
+func (r *urlRepository) queryRow(ctx context.Context, query, arg string) (model.ShortenURLModel, error) {
+	var m model.ShortenURLModel
+
+	row := r.database.QueryRowContext(ctx, query, arg)
+	err := row.Scan(&m.ID, &m.ShortURL, &m.LongURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return m, nil
+	}
 	if err != nil {
-		return model, err
+		return m, err
 	}
 
-	defer rows.Close()
-	for rows.Next() {
-		var id int64
-		var shortenURL string
-		var longURL string
+	return m, nil
+}
 
-		err = rows.Scan(&id, &shortenURL, &longURL)
-
-		if err != nil {
-			return model, err
-		}
-
-		model.ID = id
-		model.ShortURL = shortenURL
-		model.LongURL = longURL
-	}
-
-	return model, nil
+// Ping verifies the database connection is alive; used by the /readyz probe.
+func (r *urlRepository) Ping(ctx context.Context) error {
+	return r.database.PingContext(ctx)
 }

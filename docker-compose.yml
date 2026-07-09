@@ -1,0 +1,40 @@
+version: "3.9"
+
+# Local dev only. In-cluster, Postgres/collector/tracing come from the
+# gitops repo (helm chart + otel-collector sidecar), not from here.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ShortURLDataDB
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ShortURLDataDB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.105.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./deployment/otel-collector-config.local.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+
+  app:
+    build: .
+    environment:
+      environment: dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+    ports:
+      - "8585:8585"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
