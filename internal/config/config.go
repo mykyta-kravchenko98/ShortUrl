@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/mykyta-kravchenko98/ShortUrl/pkg/closeutil"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
@@ -65,7 +66,7 @@ func LoadConfigYAML() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer closeutil.Close(file)
 
 	data, err := io.ReadAll(file)
 	if err != nil {

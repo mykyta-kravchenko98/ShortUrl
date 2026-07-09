@@ -1,40 +1,45 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
-	"runtime/pprof"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/cache"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/config"
 	repositories "github.com/mykyta-kravchenko98/ShortUrl/internal/db/postgres"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/handler"
+	"github.com/mykyta-kravchenko98/ShortUrl/internal/observability"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/router"
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/service"
+	"github.com/mykyta-kravchenko98/ShortUrl/pkg/closeutil"
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/generator"
 )
 
-var (
-	logger echo.Logger
-)
-
 func main() {
-	f, err := os.Create("cpu.prof")
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	otelShutdown, err := observability.Setup(ctx)
 	if err != nil {
-		fmt.Println("Could not create CPU profile:", err)
-		return
+		fmt.Fprintln(os.Stderr, "failed to set up observability:", err)
+		os.Exit(1)
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
-
-	r := router.New()
-
-	if logger == nil {
-		logger = r.Logger
-	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			slog.Error("otel shutdown failed", "error", err)
+		}
+	}()
 
 	env := os.Getenv("environment")
 	if env == "" {
@@ -43,58 +48,77 @@ func main() {
 
 	var conf *config.Config
 	var confErr error
-	//Load configuration
-	if env == "dev" {
+	switch env {
+	case "dev":
 		conf, confErr = config.LoadConfigJSON(env)
-	}
-	if env == "prod" {
+	case "prod":
 		conf, confErr = config.LoadConfigYAML()
+	default:
+		confErr = fmt.Errorf("unknown environment %q", env)
 	}
-
 	if confErr != nil {
-		r.Logger.Fatal("Config load failed")
+		slog.Error("config load failed", "error", confErr)
+		os.Exit(1)
 	}
 
-	// connection string
 	psqlConf := conf.PostgresDB
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName, psqlConf.SSLMode)
 
-	//open postgres connection
 	db, err := sql.Open("postgres", psqlconn)
-	checkError(err)
+	if err != nil {
+		slog.Error("failed to open postgres connection", "error", err)
+		os.Exit(1)
+	}
+	defer closeutil.Close(db)
 
-	// close database
-	defer db.Close()
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(pingCtx); err != nil {
+		slog.Error("failed to reach postgres", "error", err)
+		os.Exit(1)
+	}
 
-	// check db
-	err = db.Ping()
-	checkError(err)
-
-	//Init Repository
 	urlRepo := repositories.NewCurrencySnapshotDataService(db)
-
-	//Init server group
-	v1 := r.Group("/api/v1")
-
-	//Init cache
 	c := cache.InitLRUCache(100)
 
-	//Init Id Generator
 	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterID), int64(conf.Server.MashineID))
-
-	checkError(err)
+	if err != nil {
+		slog.Error("failed to init id generator", "error", err)
+		os.Exit(1)
+	}
 
 	urlService := service.NewURLService(idGen, c, urlRepo)
 
+	r := router.New()
+	v1 := r.Group("/api/v1")
+
 	h := handler.NewHandler(urlService)
 	h.Register(v1)
+	h.RegisterHealth(r)
 
-	r.Logger.Fatal(r.Start(fmt.Sprintf("127.0.0.1:%s", conf.Server.RESTPort)))
-}
+	// Bind on all interfaces: inside a k8s pod, 127.0.0.1-only binding is
+	// unreachable from the Service/kubelet probes.
+	addr := fmt.Sprintf("0.0.0.0:%s", conf.Server.RESTPort)
 
-func checkError(err error) {
-	if err != nil {
-		logger.Fatal(err)
+	go func() {
+		slog.Info("starting server", "addr", addr, "environment", env)
+		if err := r.Start(addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server stopped unexpectedly", "error", err)
+			stop()
+		}
+	}()
+
+	<-ctx.Done()
+	slog.Info("shutdown signal received, draining connections")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := r.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed", "error", err)
+		os.Exit(1)
 	}
+
+	slog.Info("shutdown complete")
 }
