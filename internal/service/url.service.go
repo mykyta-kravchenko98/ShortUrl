@@ -71,16 +71,17 @@ func (us *urlService) GenerateShortURL(ctx context.Context, longURL string) (sho
 		LongURL:  longURL,
 	}
 
-	if err = us.urlRepository.Create(ctx, newItem); err != nil {
+	persisted, err := us.urlRepository.Create(ctx, newItem)
+	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		slog.ErrorContext(ctx, "failed to persist shortened url", "error", err)
 		return "", err
 	}
 
-	us.cache.Put(shortURL, longURL)
-	slog.InfoContext(ctx, "shortened new url", "shortURL", shortURL)
+	us.cache.Put(persisted.ShortURL, persisted.LongURL)
+	slog.InfoContext(ctx, "shortened new url", "shortURL", persisted.ShortURL)
 
-	return shortURL, nil
+	return persisted.ShortURL, nil
 }
 
 // GetLongURL - scaning chache for containing shortURL key and return longURL value

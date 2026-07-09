@@ -9,14 +9,18 @@ import (
 )
 
 const (
-	insertQuery       = `INSERT INTO "shorten_url"("id", "short_url", "long_url") VALUES ($1, $2, $3)`
+	insertQuery = `
+		INSERT INTO "shorten_url"("id", "short_url", "long_url")
+		VALUES ($1, $2, $3)
+		ON CONFLICT (long_url) DO UPDATE SET long_url = EXCLUDED.long_url
+		RETURNING id, short_url, long_url`
 	getByHashQuery    = `SELECT id, short_url, long_url FROM "shorten_url" WHERE short_url = $1`
 	getByLongURLQuery = `SELECT id, short_url, long_url FROM "shorten_url" WHERE long_url = $1`
 )
 
 // URLDataService is a interface for access to short url db data
 type URLDataService interface {
-	Create(ctx context.Context, shortenURLModel model.ShortenURLModel) error
+	Create(ctx context.Context, shortenURLModel model.ShortenURLModel) (model.ShortenURLModel, error)
 	Get(ctx context.Context, hash string) (model.ShortenURLModel, error)
 	GetByLongURL(ctx context.Context, longURL string) (model.ShortenURLModel, error)
 	Ping(ctx context.Context) error
@@ -35,12 +39,17 @@ type urlRepository struct {
 	database *sql.DB
 }
 
-// Create inserts a new short url record. Uses a parameterized query
-// (previously this used fmt.Sprintf string interpolation, which was a SQL
-// injection vector).
-func (r *urlRepository) Create(ctx context.Context, shortenURLModel model.ShortenURLModel) error {
-	_, err := r.database.ExecContext(ctx, insertQuery, shortenURLModel.ID, shortenURLModel.ShortURL, shortenURLModel.LongURL)
-	return err
+// Create inserts a new short url record, or - if another request already
+// inserted the same long_url first - returns that existing record instead.
+// Uses a parameterized query (previously this used fmt.Sprintf string
+// interpolation, which was a SQL injection vector).
+func (r *urlRepository) Create(ctx context.Context, shortenURLModel model.ShortenURLModel) (model.ShortenURLModel, error) {
+	var m model.ShortenURLModel
+	row := r.database.QueryRowContext(ctx, insertQuery, shortenURLModel.ID, shortenURLModel.ShortURL, shortenURLModel.LongURL)
+	if err := row.Scan(&m.ID, &m.ShortURL, &m.LongURL); err != nil {
+		return m, err
+	}
+	return m, nil
 }
 
 // Get looks up a record by its short_url hash. Returns a zero-value model

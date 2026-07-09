@@ -1,6 +1,8 @@
 package router
 
 import (
+	"time"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -23,5 +25,11 @@ func New() *echo.Echo {
 		AllowMethods: []string{echo.GET, echo.POST},
 	}))
 	e.Validator = NewValidator()
+
+	e.Server.ReadHeaderTimeout = 5 * time.Second
+	e.Server.ReadTimeout = 10 * time.Second
+	e.Server.WriteTimeout = 15 * time.Second
+	e.Server.IdleTimeout = 60 * time.Second
+
 	return e
 }

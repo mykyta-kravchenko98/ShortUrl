@@ -2,10 +2,11 @@ postgresDB:
   host: localhost
   user: user
   password: password
-  port: 5432
-  ssl: disable
+  dbName: ShortURLDataDB
+  port: "5432"
+  sslmode: disable
 
 server:
-  restPort: 8585
+  restPort: "8585"
   dataCenterId: 1
   mashineId: 1
