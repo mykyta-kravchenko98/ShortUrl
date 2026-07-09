@@ -96,7 +96,7 @@ func LoadConfigYAML() (*Config, error) {
 	return config, err
 }
 
-// GetConfig method provide geting already init config data
+// GetConfig method provide getting already init config data
 func GetConfig() *Config {
 	return config
 }
