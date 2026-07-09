@@ -3,3 +3,7 @@
 /.idea/ShortUrl.iml
 /.idea/vcs.xml
 /.idea/workspace.xml
+
+/config/dev.json
+/config/local.json
+cpu.prof

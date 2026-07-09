@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+*.prof
+*.md
+docker-compose.yml
+deployment/
+config/dev.json
+config/dev.json.example

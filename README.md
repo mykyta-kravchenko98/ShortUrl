@@ -40,14 +40,15 @@ Clean layered architecture:
 
 ## Run locally
 
-With Docker Compose (Postgres + OTel collector + app):
+With Docker Compose (Postgres + OTel collector + app) - no config file needed,
+Postgres connection details are passed as env vars in `docker-compose.yml`:
 ```bash
 docker compose up --build
 ```
 
 Without Docker:
 ```bash
-cp config/dev.json config/local.json
+cp config/dev.json.example config/dev.json   # then edit the password if you want one
 make migrateup
 go run .
 ```
@@ -67,12 +68,3 @@ and pushes a container image to `ghcr.io/<owner>/shorturl` on every push to
 `master`. Rollout is handled by ArgoCD from the `shorturl-gitops` repo,
 which watches for new image tags - this repo doesn't push to a server
 directly anymore.
-
-## First build after this change
-`go.mod` now declares the OpenTelemetry packages `internal/observability`
-imports, but `go.sum` wasn't regenerated against them (no network access in
-the environment that edited this repo). Before your next build:
-```bash
-go mod tidy
-go build ./...
-```

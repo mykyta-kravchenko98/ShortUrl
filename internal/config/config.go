@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/closeutil"
 	"github.com/spf13/viper"
@@ -47,17 +49,29 @@ func LoadConfigJSON(env string) (*Config, error) {
 	vp.AddConfigPath("../../config/")
 	vp.AddConfigPath("config/")
 
-	err := vp.ReadInConfig()
-	if err != nil {
+	vp.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	vp.AutomaticEnv()
+
+	for _, key := range []string{
+		"postgresDB.host", "postgresDB.user", "postgresDB.password",
+		"postgresDB.dbName", "postgresDB.port", "postgresDB.sslmode",
+		"server.restPort", "server.dataCenterId", "server.mashineId",
+	} {
+		_ = vp.BindEnv(key)
+	}
+
+	if err := vp.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFound) {
+			return &Config{}, err
+		}
+	}
+
+	if err := vp.Unmarshal(&config); err != nil {
 		return &Config{}, err
 	}
 
-	err = vp.Unmarshal(&config)
-	if err != nil {
-		return &Config{}, err
-	}
-
-	return config, err
+	return config, nil
 }
 
 // LoadConfigYAML is a init method that find config yaml file and initialize Config struct. Using when deploying on prod

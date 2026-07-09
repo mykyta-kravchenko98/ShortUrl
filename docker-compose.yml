@@ -31,6 +31,11 @@ services:
     environment:
       environment: dev
       OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
+      POSTGRESDB_HOST: postgres
+      POSTGRESDB_USER: user
+      POSTGRESDB_PASSWORD: password
+      POSTGRESDB_DBNAME: ShortURLDataDB
+      POSTGRESDB_SSLMODE: disable
     ports:
       - "8585:8585"
     depends_on:
