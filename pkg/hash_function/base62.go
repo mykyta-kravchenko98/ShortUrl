@@ -1,6 +1,9 @@
 package hashfunction
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
@@ -46,13 +49,21 @@ func Uint64ToBase62(n uint64) string {
 	return string(base62Bytes)
 }
 
-// Base62ToDecimal converts a Base62 string to its decimal representation
-func Base62ToDecimal(base62Str string) int64 {
+// Base62ToDecimal converts a Base62 string to its decimal representation.
+// Returns an error for any character outside the base62 alphabet, instead
+// of silently folding it into the result - unvalidated input previously
+// made strings.IndexByte return -1, which got multiplied into the running
+// total without complaint, corrupting the output instead of failing loudly.
+func Base62ToDecimal(base62Str string) (int64, error) {
 	var decimalNum int64
 
 	for _, char := range base62Str {
-		decimalNum = decimalNum*62 + int64(strings.IndexByte(base62Chars, byte(char)))
+		idx := strings.IndexByte(base62Chars, byte(char))
+		if idx < 0 {
+			return 0, fmt.Errorf("base62: invalid character %q in %q", char, base62Str)
+		}
+		decimalNum = decimalNum*62 + int64(idx)
 	}
 
-	return decimalNum
+	return decimalNum, nil
 }
