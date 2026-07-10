@@ -9,6 +9,7 @@ import (
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/model"
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/generator"
 	hashfunction "github.com/mykyta-kravchenko98/ShortUrl/pkg/hash_function"
+	"github.com/mykyta-kravchenko98/ShortUrl/pkg/obfuscate"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -16,9 +17,10 @@ import (
 var tracer = otel.Tracer("shorturl/service")
 
 type urlService struct {
-	idGenerator   generator.Snowflake
-	cache         cache.LRUCache
-	urlRepository repositories.URLDataService
+	idGenerator      generator.Snowflake
+	cache            cache.LRUCache
+	urlRepository    repositories.URLDataService
+	idObfuscationKey uint64
 }
 
 // URLService - interface for working with url data
@@ -29,11 +31,12 @@ type URLService interface {
 }
 
 // NewURLService - create new urlService instance and returning UrlService interface for interact with it
-func NewURLService(idGenerator generator.Snowflake, cache cache.LRUCache, rep repositories.URLDataService) URLService {
+func NewURLService(idGenerator generator.Snowflake, cache cache.LRUCache, rep repositories.URLDataService, idObfuscationKey uint64) URLService {
 	return &urlService{
-		idGenerator:   idGenerator,
-		cache:         cache,
-		urlRepository: rep,
+		idGenerator:      idGenerator,
+		cache:            cache,
+		urlRepository:    rep,
+		idObfuscationKey: idObfuscationKey,
 	}
 }
 
@@ -63,7 +66,7 @@ func (us *urlService) GenerateShortURL(ctx context.Context, longURL string) (sho
 		return shortURL, err
 	}
 
-	shortURL = hashfunction.DecimalToBase62(id)
+	shortURL = hashfunction.Uint64ToBase62(obfuscate.Mix(id, us.idObfuscationKey))
 
 	newItem := model.ShortenURLModel{
 		ID:       id,
