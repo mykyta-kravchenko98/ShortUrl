@@ -7,7 +7,9 @@ in the companion `shorturl-gitops` repo.
 ## Features
 - REST API for creating and resolving short URLs
 - LRU cache for fast redirect lookups
-- Snowflake ID generation for unique URL keys
+- Snowflake ID generation for unique URL keys, scrambled through a keyed
+  bijective mix (`pkg/obfuscate`) before encoding - short_url is not a
+  direct encoding of the timestamp-ordered ID, so it can't be enumerated
 - Base62 encoding for compact short URLs
 - PostgreSQL for persistent storage (parameterized queries)
 - `/healthz` (liveness) and `/readyz` (readiness, checks DB) probes
@@ -37,6 +39,8 @@ Clean layered architecture:
 - `internal/observability` - slog + OTel setup
 - `pkg/generator` - Snowflake ID generation
 - `pkg/hash_function` - Base62 encoding
+- `pkg/obfuscate` - keyed bit-mix that stands between the Snowflake ID and
+  the short_url, so short_url doesn't leak generation order
 
 ## Run locally
 
@@ -68,3 +72,25 @@ and pushes a container image to `ghcr.io/<owner>/shorturl` on every push to
 `master`. Rollout is handled by ArgoCD from the `shorturl-gitops` repo,
 which watches for new image tags - this repo doesn't push to a server
 directly anymore.
+
+## Configuration & secrets
+`config/dev.json` is gitignored - it's your local file, never committed.
+`config/dev.json.example` is the committed template with placeholder
+values. Any key in it can also be overridden by an env var without
+touching the file, e.g. `POSTGRESDB_PASSWORD`, `POSTGRESDB_HOST`,
+`SERVER_RESTPORT` (see `internal/config/config.go`) - that's how
+`docker-compose.yml` points the app at the `postgres` service instead of
+`localhost` without a second copy of the config file.
+
+`config/config.yml` (the prod-path config, loaded via `LoadConfigYAML`)
+only ever contains placeholder values in this repo - real values are
+supplied at deploy time by the `shorturl-gitops` Helm chart, which mounts
+its own ConfigMap over `/app/config/config.yml`.
+
+`ID_OBFUSCATION_KEY` (optional, 16 hex chars / 64 bits) seeds
+`pkg/obfuscate`. If unset, a random key is generated per process at
+startup - that's fine correctness-wise (short_url is stored once at
+creation and looked up by string afterwards, never re-derived from the
+key), it just means the same Snowflake ID wouldn't map to the same
+short_url across a restart, which nothing here relies on. Set it
+explicitly only if you want that reproducibility for some other reason.

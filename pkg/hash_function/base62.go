@@ -26,6 +26,26 @@ func DecimalToBase62(decimalNum int64) string {
 	return string(base62Bytes)
 }
 
+func Uint64ToBase62(n uint64) string {
+	if n == 0 {
+		return "0"
+	}
+
+	var base62Builder strings.Builder
+	for n > 0 {
+		remainder := n % 62
+		n /= 62
+		base62Builder.WriteByte(base62Chars[remainder])
+	}
+
+	base62Bytes := []byte(base62Builder.String())
+	for i, j := 0, len(base62Bytes)-1; i < j; i, j = i+1, j-1 {
+		base62Bytes[i], base62Bytes[j] = base62Bytes[j], base62Bytes[i]
+	}
+
+	return string(base62Bytes)
+}
+
 // Base62ToDecimal converts a Base62 string to its decimal representation
 func Base62ToDecimal(base62Str string) int64 {
 	var decimalNum int64

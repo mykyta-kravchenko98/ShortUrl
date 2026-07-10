@@ -22,6 +22,7 @@ import (
 	"github.com/mykyta-kravchenko98/ShortUrl/internal/service"
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/closeutil"
 	"github.com/mykyta-kravchenko98/ShortUrl/pkg/generator"
+	"github.com/mykyta-kravchenko98/ShortUrl/pkg/obfuscate"
 )
 
 func main() {
@@ -88,7 +89,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	urlService := service.NewURLService(idGen, c, urlRepo)
+	idObfuscationKey := obfuscate.KeyFromEnv("ID_OBFUSCATION_KEY")
+	urlService := service.NewURLService(idGen, c, urlRepo, idObfuscationKey)
 
 	r := router.New()
 	v1 := r.Group("/api/v1")
