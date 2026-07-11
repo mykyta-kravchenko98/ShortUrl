@@ -83,7 +83,7 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push
+      - name: Build and push app image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -91,3 +91,18 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}:${{ github.sha }}
             ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}:latest
+
+      # Same repo, same commit, separate tiny image: cmd/migrate has the
+      # SQL migrations embedded via go:embed, so it's always exactly in
+      # sync with whatever schema this commit's app code expects. Run as
+      # a Helm hook Job in shorturl-gitops instead of a hand-copied
+      # ConfigMap of SQL files.
+      - name: Build and push migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.migrate
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}-migrate:latest

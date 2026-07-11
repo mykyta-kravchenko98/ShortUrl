@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# Builds cmd/migrate - a standalone binary with the SQL migrations
+# (internal/db/postgres/migration) embedded via go:embed. Run as a Helm
+# post-install/post-upgrade hook Job from shorturl-gitops instead of a
+# hand-copied ConfigMap, so the gitops repo never holds a second copy of
+# migration SQL that can drift from this one.
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/migrate /migrate
+USER nonroot:nonroot
+ENTRYPOINT ["/migrate"]
