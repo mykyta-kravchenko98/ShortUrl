@@ -1,12 +1,16 @@
-# CI: build, vet, test and (on master) publish a container image to GHCR.
+# CI: build, vet, test and (on master) publish a container image to ECR.
 # No more zip+S3+CodeDeploy - deployment is fully Docker/Kubernetes now,
 # driven by ArgoCD from the shorturl-gitops repo, which just watches for a
-# new image tag.
+# new image tag. Auth to AWS is via OIDC (no long-lived keys in GitHub
+# Secrets) - see docs/CI_AWS_SETUP.md for the one-time IAM setup.
 
 name: CI
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/shorturl
+  # Check yours: aws configure get region --profile shorturl
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: "528081867341"
+  IMAGE: shorturl
 
 on:
   push:
@@ -63,16 +67,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      # id-token: write is what lets this job request an OIDC token from
+      # GitHub and exchange it for temporary AWS creds - no static keys.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/shorturl-gha-ecr-push
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -80,5 +89,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ env.IMAGE }}:latest
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}:latest
