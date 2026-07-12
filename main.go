@@ -83,7 +83,8 @@ func main() {
 	urlRepo := repositories.NewCurrencySnapshotDataService(db)
 	c := cache.InitLRUCache(100)
 
-	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterID), int64(conf.Server.MashineID))
+	machineID := generator.ResolveMachineID(int64(conf.Server.MashineID))
+	idGen, err := generator.NewSnowflake(int64(conf.Server.DataCenterID), machineID)
 	if err != nil {
 		slog.Error("failed to init id generator", "error", err)
 		os.Exit(1)
