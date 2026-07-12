@@ -63,6 +63,19 @@ func main() {
 	}
 
 	psqlConf := conf.PostgresDB
+	// User/password come from the postgres-credentials Secret (itself now
+	// populated by an ExternalSecret from AWS Secrets Manager) via env vars,
+	// not from the static config.yml - those two fields are deliberately no
+	// longer templated into config.yml at all. LoadConfigYAML has no env
+	// override support (unlike LoadConfigJSON), so this overrides by hand
+	// rather than leaving whatever LoadConfigYAML produced for these two
+	// fields (which would be empty/zero-value).
+	if v := os.Getenv("POSTGRES_USER"); v != "" {
+		psqlConf.User = v
+	}
+	if v := os.Getenv("POSTGRES_PASSWORD"); v != "" {
+		psqlConf.Password = v
+	}
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName, psqlConf.SSLMode)
 
