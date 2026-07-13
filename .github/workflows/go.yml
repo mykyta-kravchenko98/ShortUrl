@@ -135,28 +135,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Two workflow runs bumping the tag at nearly the same time (e.g.
-          # two quick pushes to master) will both clone before either has
-          # pushed, so the second one's push gets rejected as non-fast-
-          # forward. Retry with a rebase instead of just failing the job -
-          # the yq edits are idempotent (setting the same field to the same
-          # value is a no-op), so reapplying them after a rebase is safe.
+          # digest is the primary pin (shorturl.imageRef prefers it); tag is
+          # still bumped alongside it as a human-readable fallback for
+          # before the first digest-aware CI run and for manual overrides.
+          yq -i '.image.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
+          yq -i '.image.digest = strenv(APP_DIGEST)' helm/shorturl/values.yaml
+          yq -i '.postgres.migrateImage.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
+          yq -i '.postgres.migrateImage.digest = strenv(MIGRATE_DIGEST)' helm/shorturl/values.yaml
+
+          git add helm/shorturl/values.yaml
+          if git diff --cached --quiet; then
+            echo "no tag change"
+            exit 0
+          fi
+          git commit -m "chore: bump shorturl image tags to ${NEW_TAG}"
+
           for attempt in 1 2 3 4 5; do
-            # digest is the primary pin (shorturl.imageRef prefers it); tag
-            # is still bumped alongside it as a human-readable fallback for
-            # before the first digest-aware CI run and for manual overrides.
-            yq -i '.image.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
-            yq -i '.image.digest = strenv(APP_DIGEST)' helm/shorturl/values.yaml
-            yq -i '.postgres.migrateImage.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
-            yq -i '.postgres.migrateImage.digest = strenv(MIGRATE_DIGEST)' helm/shorturl/values.yaml
-
-            git add helm/shorturl/values.yaml
-            if git diff --cached --quiet; then
-              echo "no tag change"
-              exit 0
-            fi
-            git commit -m "chore: bump shorturl image tags to ${NEW_TAG}"
-
             if git push; then
               echo "pushed on attempt ${attempt}"
               exit 0
