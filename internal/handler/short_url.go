@@ -55,10 +55,12 @@ func (h *Handler) Shorten(c echo.Context) error {
 	req := &shortenRequest{}
 
 	if err := c.Bind(req); err != nil {
+		slog.WarnContext(ctx, "shorten request bind failed", "error", err)
 		return c.JSON(http.StatusBadRequest, "")
 	}
 
 	if !isValidURL(req.LongURL) {
+		slog.WarnContext(ctx, "shorten request rejected: invalid url", "longURL", req.LongURL)
 		return c.JSON(http.StatusBadRequest, "")
 	}
 

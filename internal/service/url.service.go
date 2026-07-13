@@ -55,7 +55,7 @@ func (us *urlService) GenerateShortURL(ctx context.Context, longURL string) (sho
 	}
 
 	if existRecord.ID > 0 {
-		us.cache.Put(existRecord.ShortURL, longURL)
+		us.cache.Put(ctx, existRecord.ShortURL, longURL)
 		slog.DebugContext(ctx, "long url already shortened", "shortURL", existRecord.ShortURL)
 		return existRecord.ShortURL, nil
 	}
@@ -63,6 +63,7 @@ func (us *urlService) GenerateShortURL(ctx context.Context, longURL string) (sho
 	id, err := us.idGenerator.NextID()
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
+		slog.ErrorContext(ctx, "id generation failed", "error", err)
 		return shortURL, err
 	}
 
@@ -81,7 +82,7 @@ func (us *urlService) GenerateShortURL(ctx context.Context, longURL string) (sho
 		return "", err
 	}
 
-	us.cache.Put(persisted.ShortURL, persisted.LongURL)
+	us.cache.Put(ctx, persisted.ShortURL, persisted.LongURL)
 	slog.InfoContext(ctx, "shortened new url", "shortURL", persisted.ShortURL)
 
 	return persisted.ShortURL, nil
@@ -93,7 +94,7 @@ func (us *urlService) GetLongURL(ctx context.Context, shortURL string) (string, 
 	ctx, span := tracer.Start(ctx, "urlService.GetLongURL")
 	defer span.End()
 
-	if longURL := us.cache.Get(shortURL); longURL != "" {
+	if longURL := us.cache.Get(ctx, shortURL); longURL != "" {
 		slog.DebugContext(ctx, "cache hit", "shortURL", shortURL)
 		return longURL, nil
 	}
@@ -110,7 +111,7 @@ func (us *urlService) GetLongURL(ctx context.Context, shortURL string) (string, 
 		return "", nil
 	}
 
-	us.cache.Put(result.ShortURL, result.LongURL)
+	us.cache.Put(ctx, result.ShortURL, result.LongURL)
 
 	return result.LongURL, nil
 }
