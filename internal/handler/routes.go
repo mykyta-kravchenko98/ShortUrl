@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -49,9 +50,11 @@ func shortenRateLimiter() echo.MiddlewareFunc {
 			return c.RealIP(), nil
 		},
 		ErrorHandler: func(c echo.Context, err error) error {
+			slog.ErrorContext(c.Request().Context(), "rate limiter store error", "error", err)
 			return c.JSON(http.StatusInternalServerError, nil)
 		},
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			slog.WarnContext(c.Request().Context(), "rate limit exceeded", "identifier", identifier)
 			return c.JSON(http.StatusTooManyRequests, map[string]string{
 				"error": "rate limit exceeded, try again later",
 			})

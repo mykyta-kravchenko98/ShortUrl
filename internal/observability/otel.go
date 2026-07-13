@@ -35,9 +35,10 @@ type Shutdown func(ctx context.Context) error
 // collector connectivity: exporters retry/drop in the background rather
 // than blocking application startup.
 func Setup(ctx context.Context) (Shutdown, error) {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
-	}))
+	})
+	logger := slog.New(newTraceContextHandler(jsonHandler))
 	slog.SetDefault(logger)
 
 	res, err := resource.New(ctx,

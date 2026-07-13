@@ -1,6 +1,16 @@
 package cache
 
-import "sync"
+import (
+	"context"
+	"log/slog"
+	"sync"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+)
+
+const meterName = "shorturl"
 
 type lruCache struct {
 	Capacity int
@@ -8,6 +18,9 @@ type lruCache struct {
 	Head     *cacheNode
 	Teil     *cacheNode
 	m        *sync.RWMutex
+
+	requests  metric.Int64Counter
+	evictions metric.Int64Counter
 }
 
 type cacheNode struct {
@@ -17,75 +30,95 @@ type cacheNode struct {
 	Prev  *cacheNode
 }
 
-//LRUCache its interface for comunication with lru cache
+// LRUCache its interface for communication with lru cache
 type LRUCache interface {
-	Get(key string) string
-	Put(key string, value string)
+	Get(ctx context.Context, key string) string
+	Put(ctx context.Context, key string, value string)
 	Length() int
 }
 
 // InitLRUCache its method for creating instance of lruCache and return LRUCache interface
 func InitLRUCache(capacity int) LRUCache {
+	meter := otel.Meter(meterName)
+
+	requests, err := meter.Int64Counter("cache.requests",
+		metric.WithDescription("LRU cache lookups, tagged by outcome (hit/miss)"))
+	if err != nil {
+		panic(err)
+	}
+	evictions, err := meter.Int64Counter("cache.evictions",
+		metric.WithDescription("Entries evicted from the LRU cache to stay under capacity"))
+	if err != nil {
+		panic(err)
+	}
+
 	cache := &lruCache{
-		Capacity: capacity,
-		Cache:    make(map[string]*cacheNode),
-		m:        &sync.RWMutex{},
+		Capacity:  capacity,
+		Cache:     make(map[string]*cacheNode),
+		m:         &sync.RWMutex{},
+		requests:  requests,
+		evictions: evictions,
 	}
 	return cache
 }
 
-func (с *lruCache) Length() int {
-	return len(с.Cache)
+func (c *lruCache) Length() int {
+	return len(c.Cache)
 }
 
-func (с *lruCache) Get(key string) string {
-	с.m.Lock()
-	defer с.m.Unlock()
-	if value, ok := с.Cache[key]; ok {
-		с.MoveFront(value)
+func (c *lruCache) Get(ctx context.Context, key string) string {
+	c.m.Lock()
+	defer c.m.Unlock()
+	if value, ok := c.Cache[key]; ok {
+		c.MoveFront(value)
+		c.requests.Add(ctx, 1, metric.WithAttributes(attribute.String("result", "hit")))
 		return value.Value
 	}
 
+	c.requests.Add(ctx, 1, metric.WithAttributes(attribute.String("result", "miss")))
 	return ""
 }
 
-func (с *lruCache) Put(key string, value string) {
-	с.m.Lock()
-	defer с.m.Unlock()
-	if result, found := с.Cache[key]; found {
+func (c *lruCache) Put(ctx context.Context, key string, value string) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	if result, found := c.Cache[key]; found {
 		result.Value = value
-		с.MoveFront(result)
+		c.MoveFront(result)
 	} else {
 		newNode := &cacheNode{Key: key, Value: value}
-		if len(с.Cache) >= с.Capacity {
-			delete(с.Cache, с.Teil.Key)
-			с.RemoveTail()
+		if len(c.Cache) >= c.Capacity {
+			evictedKey := c.Teil.Key
+			delete(c.Cache, evictedKey)
+			c.RemoveTail()
+			c.evictions.Add(ctx, 1)
+			slog.DebugContext(ctx, "cache eviction", "evictedKey", evictedKey, "capacity", c.Capacity)
 		}
-		с.Cache[key] = newNode
-		с.AddNode(newNode)
+		c.Cache[key] = newNode
+		c.AddNode(newNode)
 	}
 }
 
-func (с *lruCache) MoveFront(node *cacheNode) {
-	if node == с.Head {
+func (c *lruCache) MoveFront(node *cacheNode) {
+	if node == c.Head {
 		return
 	}
 
-	с.RemoveNode(node)
-	с.AddNode(node)
+	c.RemoveNode(node)
+	c.AddNode(node)
 }
 
-func (с *lruCache) RemoveTail() {
-	с.RemoveNode(с.Teil)
+func (c *lruCache) RemoveTail() {
+	c.RemoveNode(c.Teil)
 }
 
-func (с *lruCache) RemoveNode(node *cacheNode) {
-	if node == с.Head {
-		с.Head = node.Next
+func (c *lruCache) RemoveNode(node *cacheNode) {
+	if node == c.Head {
+		c.Head = node.Next
 	}
 
-	if node == с.Teil {
-		с.Teil = node.Prev
+	if node == c.Teil {
+		c.Teil = node.Prev
 	}
 
 	if node.Prev != nil {
@@ -100,13 +133,13 @@ func (с *lruCache) RemoveNode(node *cacheNode) {
 	node.Next = nil
 }
 
-func (с *lruCache) AddNode(node *cacheNode) {
-	if с.Head == nil {
-		с.Head = node
-		с.Teil = node
+func (c *lruCache) AddNode(node *cacheNode) {
+	if c.Head == nil {
+		c.Head = node
+		c.Teil = node
 	} else {
-		с.Head.Prev = node
-		node.Next = с.Head
-		с.Head = node
+		c.Head.Prev = node
+		node.Next = c.Head
+		c.Head = node
 	}
 }
