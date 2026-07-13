@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -26,14 +27,15 @@ import (
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		mustEnv("POSTGRES_USER"),
-		mustEnv("POSTGRES_PASSWORD"),
-		mustEnv("POSTGRES_HOST"),
-		envOr("POSTGRES_PORT", "5432"),
-		mustEnv("POSTGRES_DB"),
-		envOr("POSTGRES_SSLMODE", "disable"),
-	)
+	dsn := (&url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(mustEnv("POSTGRES_USER"), mustEnv("POSTGRES_PASSWORD")),
+		Host:   fmt.Sprintf("%s:%s", mustEnv("POSTGRES_HOST"), envOr("POSTGRES_PORT", "5432")),
+		Path:   "/" + mustEnv("POSTGRES_DB"),
+		RawQuery: url.Values{
+			"sslmode": {envOr("POSTGRES_SSLMODE", "disable")},
+		}.Encode(),
+	}).String()
 
 	src, err := iofs.New(migration.Files, ".")
 	if err != nil {

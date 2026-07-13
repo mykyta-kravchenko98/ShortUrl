@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -76,8 +77,15 @@ func main() {
 	if v := os.Getenv("POSTGRES_PASSWORD"); v != "" {
 		psqlConf.Password = v
 	}
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		psqlConf.Host, psqlConf.Port, psqlConf.User, psqlConf.Password, psqlConf.DBName, psqlConf.SSLMode)
+	psqlconn := (&url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(psqlConf.User, psqlConf.Password),
+		Host:   fmt.Sprintf("%s:%s", psqlConf.Host, psqlConf.Port),
+		Path:   "/" + psqlConf.DBName,
+		RawQuery: url.Values{
+			"sslmode": {psqlConf.SSLMode},
+		}.Encode(),
+	}).String()
 
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
