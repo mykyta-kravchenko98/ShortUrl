@@ -84,6 +84,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push app image
+        id: build-app
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -98,6 +99,7 @@ jobs:
       # a Helm hook Job in shorturl-gitops instead of a hand-copied
       # ConfigMap of SQL files.
       - name: Build and push migrate image
+        id: build-migrate
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -106,3 +108,65 @@ jobs:
           tags: |
             ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}-migrate:${{ github.sha }}
             ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE }}-migrate:latest
+
+      # Bumps image.tag / postgres.migrateImage.tag in shorturl-gitops to
+      # this commit's SHA, so ArgoCD actually has something to sync (the
+      # ":latest" tag never changes in git, so ArgoCD had no way to know a
+      # new image existed - this is what makes new builds roll out
+      # automatically instead of requiring a manual crictl rmi + pod
+      # delete). Needs a PAT with push access to shorturl-gitops in the
+      # GITOPS_DEPLOY_TOKEN secret - a fine-grained GitHub PAT scoped to
+      # just that repo's contents (read/write) is enough, no org-wide access.
+      - name: Bump image tags in shorturl-gitops
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_DEPLOY_TOKEN }}
+          NEW_TAG: ${{ github.sha }}
+          APP_DIGEST: ${{ steps.build-app.outputs.digest }}
+          MIGRATE_DIGEST: ${{ steps.build-migrate.outputs.digest }}
+        run: |
+          # Not --depth 1: a shallow clone can make the rebase-and-retry
+          # loop below flaky, and this repo is tiny anyway.
+          git clone https://x-access-token:${GITOPS_TOKEN}@github.com/mykyta-kravchenko98/shorturl-gitops.git gitops-repo
+          cd gitops-repo
+
+          sudo curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Two workflow runs bumping the tag at nearly the same time (e.g.
+          # two quick pushes to master) will both clone before either has
+          # pushed, so the second one's push gets rejected as non-fast-
+          # forward. Retry with a rebase instead of just failing the job -
+          # the yq edits are idempotent (setting the same field to the same
+          # value is a no-op), so reapplying them after a rebase is safe.
+          for attempt in 1 2 3 4 5; do
+            # digest is the primary pin (shorturl.imageRef prefers it); tag
+            # is still bumped alongside it as a human-readable fallback for
+            # before the first digest-aware CI run and for manual overrides.
+            yq -i '.image.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
+            yq -i '.image.digest = strenv(APP_DIGEST)' helm/shorturl/values.yaml
+            yq -i '.postgres.migrateImage.tag = strenv(NEW_TAG)' helm/shorturl/values.yaml
+            yq -i '.postgres.migrateImage.digest = strenv(MIGRATE_DIGEST)' helm/shorturl/values.yaml
+
+            git add helm/shorturl/values.yaml
+            if git diff --cached --quiet; then
+              echo "no tag change"
+              exit 0
+            fi
+            git commit -m "chore: bump shorturl image tags to ${NEW_TAG}"
+
+            if git push; then
+              echo "pushed on attempt ${attempt}"
+              exit 0
+            fi
+
+            echo "push rejected on attempt ${attempt}, rebasing and retrying"
+            git fetch origin main
+            git rebase origin/main
+            sleep $(( (RANDOM % 5) + 1 ))
+          done
+
+          echo "failed to push tag bump after 5 attempts"
+          exit 1
