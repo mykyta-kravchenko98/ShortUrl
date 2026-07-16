@@ -16,9 +16,9 @@ func New() *echo.Echo {
 	e := echo.New()
 	e.Logger.SetLevel(log.DEBUG)
 	e.Pre(middleware.RemoveTrailingSlash())
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
 	e.Use(otelecho.Middleware(observability.ServiceName))
+	e.Use(observability.HTTPLoggerMiddleware())
+	e.Use(middleware.Recover())
 	e.Use(observability.HTTPMetricsMiddleware())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
